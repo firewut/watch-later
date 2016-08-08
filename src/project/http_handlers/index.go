@@ -30,8 +30,19 @@ func Index() func(w http.ResponseWriter, r *http.Request) {
 				} else if err == messages.ErrTokenNotFound {
 					// pass
 				} else {
-					Log.Error(err)
-					h.SetError(messages.ErrInternalError)
+					Config.RavenClient.CaptureError(
+						err,
+						map[string]string{
+							"profileId": value["profile-id"],
+						},
+					)
+					h.no_commit_response = true
+					http.Redirect(
+						h.writer,
+						h.request,
+						"/error",
+						http.StatusFound,
+					)
 					return
 				}
 			}
@@ -47,6 +58,22 @@ func Index() func(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Serve error page
+func Error() func(w http.ResponseWriter, r *http.Request) {
+	index_template, err := template.ParseFiles(filepath.Join(Config.TemplatesDir, "error.html"))
+	if err != nil {
+		panic(err)
+	}
+
+	return HttpHandler(func(h *Http) {
+		h.no_commit_response = true
+		index_template.ExecuteTemplate(
+			h.writer, "error.html",
+			map[string]interface{}{},
+		)
+	})
+}
+
 // Remove app from a list of authorized apps in user's interface
 func Stop() func(w http.ResponseWriter, r *http.Request) {
 	return HttpHandler(func(h *Http) {
@@ -58,23 +85,81 @@ func Stop() func(w http.ResponseWriter, r *http.Request) {
 					if token.CheckIsActive() {
 						if err := token.Revoke(); err == nil {
 							h.no_commit_response = true
-							http.Redirect(h.writer, h.request, "/", http.StatusFound)
+							http.Redirect(
+								h.writer,
+								h.request,
+								"/",
+								http.StatusFound,
+							)
 							return
 						} else {
-							Log.Error(err)
-							h.SetError(err)
+							Config.RavenClient.CaptureError(
+								err,
+								map[string]string{
+									"profileId": value["profile-id"],
+								},
+							)
+							h.no_commit_response = true
+							http.Redirect(
+								h.writer,
+								h.request,
+								"/error",
+								http.StatusFound,
+							)
 							return
 						}
+					} else {
+						h.no_commit_response = true
+						http.Redirect(
+							h.writer,
+							h.request,
+							"/",
+							http.StatusFound,
+						)
+						return
 					}
 				} else {
-					Log.Error(err)
-					h.SetError(messages.ErrInternalError)
+					Config.RavenClient.CaptureError(
+						err,
+						map[string]string{
+							"profileId": value["profile-id"],
+						},
+					)
+					h.no_commit_response = true
+					http.Redirect(
+						h.writer,
+						h.request,
+						"/error",
+						http.StatusFound,
+					)
 					return
 				}
+			} else {
+				Config.RavenClient.CaptureError(
+					err,
+					map[string]string{
+						"profileId": value["profile-id"],
+					},
+				)
+				h.no_commit_response = true
+				http.Redirect(
+					h.writer,
+					h.request,
+					"/error",
+					http.StatusFound,
+				)
+				return
 			}
+		} else {
+			h.no_commit_response = true
+			http.Redirect(
+				h.writer,
+				h.request,
+				"/error",
+				http.StatusFound,
+			)
+			return
 		}
-
-		h.SetError(messages.ErrProfileNotFound)
 	})
 }
 
@@ -89,23 +174,58 @@ func Enable() func(w http.ResponseWriter, r *http.Request) {
 					if !token.CheckIsActive() {
 						if err = token.Enable(); err == nil {
 							h.no_commit_response = true
-							http.Redirect(h.writer, h.request, "/", http.StatusFound)
+							http.Redirect(
+								h.writer,
+								h.request,
+								"/",
+								http.StatusFound,
+							)
 							return
 						} else {
-							Log.Error(err)
-							h.SetError(err)
+							Config.RavenClient.CaptureError(
+								err,
+								map[string]string{
+									"profileId": value["profile-id"],
+								},
+							)
+							h.no_commit_response = true
+							http.Redirect(
+								h.writer,
+								h.request,
+								"/error",
+								http.StatusFound,
+							)
 							return
 						}
 					}
 				} else {
-					Log.Error(err)
-					h.SetError(messages.ErrInternalError)
+					Config.RavenClient.CaptureError(
+						err,
+						map[string]string{
+							"profileId": value["profile-id"],
+						},
+					)
+					h.no_commit_response = true
+					http.Redirect(
+						h.writer,
+						h.request,
+						"/error",
+						http.StatusFound,
+					)
 					return
 				}
 			}
-		}
+		} else {
 
-		h.SetError(messages.ErrProfileNotFound)
+			h.no_commit_response = true
+			http.Redirect(
+				h.writer,
+				h.request,
+				"/",
+				http.StatusFound,
+			)
+			return
+		}
 	})
 }
 
@@ -123,20 +243,64 @@ func Disable() func(w http.ResponseWriter, r *http.Request) {
 							http.Redirect(h.writer, h.request, "/", http.StatusFound)
 							return
 						} else {
-							Log.Error(err)
-							h.SetError(err)
+							Config.RavenClient.CaptureError(
+								err,
+								map[string]string{
+									"profileId": value["profile-id"],
+								},
+							)
+							h.no_commit_response = true
+							http.Redirect(
+								h.writer,
+								h.request,
+								"/error",
+								http.StatusFound,
+							)
 							return
 						}
 					}
 				} else {
-					Log.Error(err)
-					h.SetError(messages.ErrInternalError)
+					Config.RavenClient.CaptureError(
+						err,
+						map[string]string{
+							"profileId": value["profile-id"],
+						},
+					)
+					h.no_commit_response = true
+					http.Redirect(
+						h.writer,
+						h.request,
+						"/error",
+						http.StatusFound,
+					)
 					return
 				}
+			} else {
+				Config.RavenClient.CaptureError(
+					err,
+					map[string]string{
+						"profileId": value["profile-id"],
+					},
+				)
+				h.no_commit_response = true
+				http.Redirect(
+					h.writer,
+					h.request,
+					"/error",
+					http.StatusFound,
+				)
+				return
 			}
+		} else {
+			h.no_commit_response = true
+			http.Redirect(
+				h.writer,
+				h.request,
+				"/",
+				http.StatusFound,
+			)
+			return
 		}
-
-		h.SetError(messages.ErrProfileNotFound)
 	})
 }
 

@@ -29,8 +29,19 @@ func Logout() func(w http.ResponseWriter, r *http.Request) {
 				} else if err == messages.ErrTokenNotFound {
 					// pass
 				} else {
-					Log.Error(err)
-					h.SetError(messages.ErrInternalError)
+					Config.RavenClient.CaptureError(
+						err,
+						map[string]string{
+							"profileId": value["profile-id"],
+						},
+					)
+					h.no_commit_response = true
+					http.Redirect(
+						h.writer,
+						h.request,
+						"/error",
+						http.StatusFound,
+					)
 					return
 				}
 			}
@@ -74,8 +85,17 @@ func OAuth2Callback() func(w http.ResponseWriter, r *http.Request) {
 		oauth2token, err := cfg.Exchange(oauth2.NoContext, code)
 
 		if err != nil {
-			Log.Error(err)
-			h.SetError(err)
+			Config.RavenClient.CaptureError(
+				err,
+				map[string]string{},
+			)
+			h.no_commit_response = true
+			http.Redirect(
+				h.writer,
+				h.request,
+				"/error",
+				http.StatusFound,
+			)
 			return
 		}
 
@@ -87,15 +107,33 @@ func OAuth2Callback() func(w http.ResponseWriter, r *http.Request) {
 			defer response.Body.Close()
 			contents, err := ioutil.ReadAll(response.Body)
 			if err != nil {
-				Log.Error(err)
-				h.SetError(messages.ErrInternalError)
+				Config.RavenClient.CaptureError(
+					err,
+					map[string]string{},
+				)
+				h.no_commit_response = true
+				http.Redirect(
+					h.writer,
+					h.request,
+					"/error",
+					http.StatusFound,
+				)
 				return
 			}
 
 			profile, err := models.NewProfileFromResponse(contents)
 			if err != nil {
-				Log.Error(err)
-				h.SetError(messages.ErrInternalError)
+				Config.RavenClient.CaptureError(
+					err,
+					map[string]string{},
+				)
+				h.no_commit_response = true
+				http.Redirect(
+					h.writer,
+					h.request,
+					"/error",
+					http.StatusFound,
+				)
 				return
 			}
 
@@ -143,8 +181,8 @@ func OAuth2Callback() func(w http.ResponseWriter, r *http.Request) {
 			// do not execute h.commitResponse()
 			h.no_commit_response = true
 			http.Redirect(h.writer, h.request, "/", http.StatusFound)
-
 		} else {
+
 			Log.StdOut.Info.Println("oauth2token is invalid")
 		}
 	})

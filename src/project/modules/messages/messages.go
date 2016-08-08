@@ -38,7 +38,7 @@ func (e *ErrorStruct) GetFormat() string {
 func (e *ErrorStruct) GetMessage() string {
 	errors_strings := make([]string, 0)
 	for _, arg := range e.args {
-		errors_strings = append(errors_strings, fmt.Sprintf("%s", arg))
+		errors_strings = append(errors_strings, fmt.Sprintf("%v", arg))
 	}
 	return strings.Join(errors_strings, "\n")
 }

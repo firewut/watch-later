@@ -15,6 +15,7 @@ func NewRouter(config *config.Config) (s *mux.Router) {
 	mainHandler.HandleFunc("/logout", http_handlers.Logout()).Methods("GET").Name("Logout")
 	mainHandler.HandleFunc("/oauth2callback", http_handlers.OAuth2Callback()).Methods("GET").Name("OAuth2Callback")
 	mainHandler.HandleFunc("/profile", http_handlers.Profile()).Methods("GET").Name("Profile")
+	mainHandler.HandleFunc("/error", http_handlers.Error()).Methods("GET").Name("Error")
 	mainHandler.HandleFunc("/stop", http_handlers.Stop()).Methods("GET").Name("Stop")
 	mainHandler.HandleFunc("/favicon.png", http_handlers.Favicon()).Methods("GET").Name("Favicon")
 	mainHandler.HandleFunc("/logo.png", http_handlers.Logo()).Methods("GET").Name("Logo")

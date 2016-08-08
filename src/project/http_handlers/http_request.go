@@ -108,10 +108,6 @@ func (h *Http) WriteReader() {
 	if reader, ok := h.response.(*bytes.Reader); ok {
 		http.ServeContent(h.writer, h.request, "", time.Now().UTC(), reader)
 	} else {
-		Log.Error(
-			"HttpHandlers.WriteReader",
-			"Cannot write a reader",
-		)
 		h.SetError(messages.ErrFileNotFound)
 		h.WriteJson()
 	}

@@ -2,6 +2,8 @@ package config
 
 import (
 	"errors"
+	"fmt"
+	"github.com/getsentry/raven-go"
 	"github.com/gorilla/mux"
 	"net/url"
 	"os"
@@ -42,6 +44,9 @@ type Config struct {
 
 	MiscOptions map[string]interface{} `flag:"service-misc-options" json:"-"`
 	Router      *mux.Router
+
+	SentryDSN   string        `flag:"sentry-dsn" json:"-"`
+	RavenClient *raven.Client `json:"-"`
 }
 
 func NewConfig() (config *Config, err error) {
@@ -64,6 +69,15 @@ func NewConfig() (config *Config, err error) {
 		if err == nil {
 			config.HttpDomainURL = u
 		}
+	}
+
+	if len(config.SentryDSN) > 0 {
+		config.RavenClient, err = raven.New(config.SentryDSN)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		panic(fmt.Errorf("Need a sentry-dsn"))
 	}
 
 	return

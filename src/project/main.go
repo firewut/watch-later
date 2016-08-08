@@ -89,6 +89,7 @@ func main() {
 	defer Log.Info(fmt.Sprintf("%s: completed shutdown.", cfg.HostName))
 
 	http.Handle("/", loggedRouter)
+	// Init sequence MATTERS - TODO: fix it
 
 	// Set loggers
 	models.Log = Log

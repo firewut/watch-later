@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Watch Later Service - automatically move "Watch Later" videos to another playlist.</title>
+		<meta charset="UTF-8">
+		<link rel="shortcut icon" href="/favicon.png" type="image/png">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"/>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+		<style>
+		.wl-start-btn{
+		color: #FFF;
+		font-size: 1.5em;
+		}
+		.wl-start-btn:hover{
+		color: #FFF;
+		}
+		.wl-start-btn{
+		background: rgb(51, 51, 51);
+		padding-left: 1em;
+		padding-right: 1em;
+		}
+		body {
+		font-family: AvenirNext-Regular;
+		}
+		.wl-content-item {
+		padding: 30px 15px;
+		border-top: 1px solid rgba(51, 51, 51, 0.1);
+		}
+		.wl-content-item:first-child {
+		border-top: none;
+		/*max-width: 1000px;*/
+		/*margin: 0 auto;*/
+		}
+		.wl-phone-screen {
+		border: 1px solid rgba(51, 51, 51, 0.2);
+		-webkit-box-shadow: 1px 1px 5px 1px rgba(0,0,0,0.25);
+		-moz-box-shadow: 1px 1px 5px 1px rgba(0,0,0,0.25);
+		box-shadow: 1px 1px 5px 1px rgba(0,0,0,0.25);
+		}
+		.wl-title, .wl-big-title {
+		font-size: 1.8em;
+		line-height: 1.1em
+		}
+		.wl-big-title {
+		font-size: 2em;
+		}
+		.wl-sub-title {
+		font-size: 1.2em;
+		margin-top: 10px;
+		color: rgba(51, 51, 51, 0.7);
+		}
+		.wl-list li {
+		padding-bottom: 5px;
+		text-align: left;
+		}
+		.wl-list li:last-child {
+		padding-bottom: 0;
+		}
+		.wl-text-block {
+		font-size: 20px;
+		padding: 0 30px;
+		}
+		@media (min-width: 820px) {
+		.wl-text-block-auto-resize {
+		width: 800px;
+		margin: 0 auto;
+		}
+		}
+		.wl-price {
+		color: #468847;
+		}
+		.wl-footer {
+		padding: 10px 15px;
+		border-top: 1px solid rgba(51, 51, 51, 0.1);
+		text-align: center;
+		}
+		</style>
+	</head>
+	<body class="text-center">
+		{{if .token}}
+		<div class="wl-content-item">
+			<div>
+				<i class="fa fa-clock-o" style="font-size: 14em;"></i>
+			</div>
+			<div class="wl-big-title" style="margin-top: 20px;">
+				Hi, {{.token.Profile.Name}} (<a href="/logout">Logout</a>)
+			</div>
+			
+			{{if .token.IsActive}}
+			<div class="wl-sub-title">
+				Your <a href="https://www.youtube.com/playlist?list=WL">watch later</a> playlist's videos are moving to  <b>Watch Later Service</b> playlist every five minutes. The latest operation was performed {{.token.LatestOperationWasPerformed}}.
+			</div>
+			<div style="margin-top: 20px">
+				<a class="btn wl-start-btn" href="/disable">
+					Stop
+				</a>
+			</div>
+			{{else}}
+			<div class="wl-sub-title">
+				Your <a href="https://www.youtube.com/playlist?list=WL">watch later</a> playlist's videos are not moving to the <b>Watch Later Service</b> playlist every five minutes. Click "Resume" and it will work. The latest operation was performed {{.token.LatestOperationWasPerformed}}.
+			</div>
+			<div style="margin-top: 20px">
+				<a class="btn wl-start-btn" href="/enable">
+					Resume
+				</a>
+			</div>
+			{{end}}
+		</div>
+		{{else}}
+		<div class="wl-content-item">
+			<div>
+				<i class="fa fa-youtube-play" style="font-size: 14em;"></i>
+			</div>
+			<div class="wl-big-title" style="margin-top: 20px;">
+				Watch Later Service - automatically move <i class="fa fa-clock-o"></i>&nbsp;<b>Watch&nbsp;Later</b> videos to another playlist.
+			</div>
+			<div class="wl-sub-title">
+				Why? Read <a href="https://blog.chib.me/whats-wrong-with-youtubes-watch-later-list/">this blog post</a>.
+			</div>
+			<div style="margin-top: 20px">
+				<a class="btn wl-start-btn" href="/login">
+					Start using
+				</a>
+			</div>
+		</div>
+		<div class="wl-content-item">
+			<div class="wl-title">
+				How it works?
+			</div>
+			<div class="wl-sub-title">
+				<ul class="wl-list wl-text-block wl-text-block-auto-resize">
+					<li>
+						Ensure that you have a youtube channel. To create a youtube channel use <a href="https://www.youtube.com/create_channel">this link</a>.
+					</li>
+					<li>
+						Click "Start using"
+					</li>
+					<li>
+						Allow to our service to work with your youtube account
+					</li>
+					<li>
+						After that we will create a normal playlist named "Watch Later Service"
+					</li>
+					<li>
+						Every five minutes we will move all your videos from default "Watch Later" list to the normal playlist.
+					</li>
+					<li>
+						That's it 😊
+					</li>
+				</ul>
+			</div>
+			<div style="margin-top: 10px">
+				<a class="btn wl-start-btn" href="/login">
+					Start using
+				</a>
+			</div>
+		</div>
+		{{end}}
+		<div class="wl-content-item">
+			<div class="wl-sub-title">
+				If this app logs you out periodically:
+			</div>
+			<div class="wl-sub-title">
+				Proceed to <a href="https://security.google.com/settings/security/permissions?utm_source=OGB&pli=1">
+				google oauth authorized applications</a> and remove the "Watch Later Service".
+				<p />
+				Then Try to use our service again via this page.
+			</div>
+		</div>
+		<div class="wl-content-item">
+			<div class="wl-sub-title">
+				Hi there, we made this service free, but you can always support us &#129297;
+			</div>
+			<div class="wl-sub-title">
+				<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+					<input type="hidden" name="cmd" value="_s-xclick">
+					<input type="hidden" name="encrypted" value="-----BEGIN PKCS7-----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-----END PKCS7-----
+					">
+					<input type="image" src="https://www.paypalobjects.com/en_US/RU/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+					<img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+				</div>
+			</div>
+			<div class="wl-footer">
+				<ul class="list-inline" style="margin: 0">
+					<li>Built by <a href="https://docast.me">Docast</a> team. Why? Read <a href="https://blog.chib.me/whats-wrong-with-youtubes-watch-later-list/">this blog post</a>.</li>
+				</ul>
+			</div>
+		</body>
+		<!-- Yandex.Metrika counter --><script type="text/javascript"> (function (d, w, c) { (w[c] = w[c] || []).push(function() { try { w.yaCounter34170100 = new Ya.Metrika({ id:34170100, clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true }); } catch(e) { } }); var n = d.getElementsByTagName("script")[0], s = d.createElement("script"), f = function () { n.parentNode.insertBefore(s, n); }; s.type = "text/javascript"; s.async = true; s.src = "https://mc.yandex.ru/metrika/watch.js"; if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); } })(document, window, "yandex_metrika_callbacks");</script><noscript><div><img src="https://mc.yandex.ru/watch/34170100" style="position:absolute; left:-9999px;" alt="" /></div></noscript><!-- /Yandex.Metrika counter -->
+	</html>

@@ -25,9 +25,11 @@ type task struct {
 // Trigger a task's function
 func (t *task) trigger() {
 	if err := t.function(t); err != nil {
-		Log.Error(
-			fmt.Sprintf("watcher task %s", t.Name),
-			err.Error(),
+		Config.RavenClient.CaptureError(
+			err,
+			map[string]string{
+				"Task": t.Name,
+			},
 		)
 	}
 }
@@ -62,7 +64,7 @@ func (t *task) up() {
 // list of all tasks
 var tasks = map[string]*task{
 	"watch_later": &task{
-		Tick:           CHECK_WATCH_LATER_PERIOD,
+		Tick:           time.Second * 10,
 		quit:           make(chan bool, 1),
 		quit_completed: make(chan bool, 1),
 		force_tick:     make(chan bool, 1),
@@ -90,43 +92,51 @@ var tasks = map[string]*task{
 
 						start_time := time.Now().UTC()
 
-						// Call process - will cause auto-refresh if necessary
 						client := cfg.Client(oauth2.NoContext, token_passed.OAuth2Token)
 
-						old_token := *token_passed
+						err_processing := ProcessWatchLater(client, token_passed)
 
-						// If token was auto-refreshed - delete old token and save new
-						if token_passed.OAuth2Token.AccessToken != old_token.OAuth2Token.AccessToken ||
-							token_passed.OAuth2Token.RefreshToken != old_token.OAuth2Token.RefreshToken {
-							Log.Warning(
-								fmt.Sprintf(
-									"Token refreshed %v => %v. %v => %v",
-									old_token.OAuth2Token.AccessToken,
-									token_passed.OAuth2Token.AccessToken,
-									old_token.OAuth2Token.RefreshToken,
-									token_passed.OAuth2Token.RefreshToken,
-								),
-							)
-							token_passed.Save()
-						}
-
-						_, err_processing := ProcessWatchLater(client, token_passed)
+						token_deleted := false
 						if err_processing != nil {
 							err_message := err_processing.Error()
-							if strings.Contains(err_message, "Token has been revoked.") ||
-								strings.Contains(err_message, "Invalid Credentials") {
-
-								token_passed.Delete()
-								Log.Warning("watch_later task: removing revoked token ", token_passed.Profile.Id)
-							} else {
-								Log.Error("watch_later task: ", token_passed.Profile.Id, err_processing)
+							switch {
+							case strings.Contains(err_message, "Token has been revoked."),
+								strings.Contains(err_message, "Invalid Credentials"),
+								strings.Contains(err_message, "googleapi: Error 403: Forbidden, playlistItemsNotAccessible"),
+								strings.Contains(err_message, "invalid_grant"):
+								Log.Info("task: removing token ", token_passed.Profile.Id)
+								if err := token_passed.Delete(); err == nil {
+									token_deleted = true
+								} else {
+									Config.RavenClient.CaptureError(
+										err,
+										map[string]string{
+											"TokenId": token_passed.Id,
+											"Email":   token_passed.Profile.Email,
+										},
+									)
+								}
+							case strings.Contains(err_message, "token expired and refresh token is not set"):
+								// Refresh a token
+							case strings.Contains(err_message, "playlistContainsMaximumNumberOfVideos"):
+								// pass
+							default:
+								Config.RavenClient.CaptureError(
+									err_processing,
+									map[string]string{
+										"TokenId": token_passed.Id,
+										"Email":   token_passed.Profile.Email,
+									},
+								)
 							}
 						}
 
-						Log.Info(fmt.Sprintf("processing a %s took %v", token_passed.Profile.Id, time.Since(start_time)))
-						go token_passed.Patch(map[string]interface{}{
-							"latest_operation": time.Now().UTC(),
-						})
+						if !token_deleted {
+							Log.Info(fmt.Sprintf("processing a %s took %v", token_passed.Profile.Id, time.Since(start_time)))
+							go token_passed.Patch(map[string]interface{}{
+								"latest_operation": time.Now().UTC(),
+							})
+						}
 
 					}(&wg, concurrency, token)
 				}

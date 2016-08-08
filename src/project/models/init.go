@@ -15,9 +15,72 @@ import (
 )
 
 const (
-	CHECK_WATCH_LATER_PERIOD  = time.Minute * 5
-	WATCH_LATER_PLAYLIST_NAME = `Watch Later Service`
+	CHECK_WATCH_LATER_PERIOD        = time.Minute * 5
+	ISO_8601_DURATION_REGEX         = `^PT(?P<minutes>\d+)M(?P<seconds>\d+)S$`
+	WATCH_LATER_PLAYLIST_NAME       = `Watch Later Service`
+	WATCH_LATER_PLAYLIST_NAME_SHORT = `WLS`
+	WATCH_LATER_PLAYLIST_REGEXP     = `^((Watch Later Service)|(Watch Later Service[[ ]{1}\d+]?))$`
 )
+
+// A Youtube's playlist
+type Playlist struct {
+	Id         string
+	Title      string
+	VideoItems Videos // < playlist videos
+}
+
+type Playlists []*Playlist
+
+func (p Playlists) Len() int           { return len(p) }
+func (p Playlists) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p Playlists) Less(i, j int) bool { return p[i].Title < p[j].Title }
+
+// Video item from a playlist
+type Video struct {
+	Id       string
+	Title    string
+	Duration time.Duration
+}
+
+type Videos []*Video
+
+func (v Videos) Len() int           { return len(v) }
+func (v Videos) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
+func (v Videos) Less(i, j int) bool { return v[i].Duration < v[j].Duration }
+
+// Duration Playlists
+type DurationPlaylist struct {
+	playlistId string
+	start      time.Duration
+	end        time.Duration
+}
+
+func (dp *DurationPlaylist) checkMatches(d time.Duration) bool {
+	return d <= dp.end && d >= dp.start
+}
+
+func newDurationPlaylists() (DurationPlaylists map[string]*DurationPlaylist) {
+	DurationPlaylists = map[string]*DurationPlaylist{
+		fmt.Sprintf("%s 0-3 minutes", WATCH_LATER_PLAYLIST_NAME_SHORT): &DurationPlaylist{
+			start: time.Second,
+			end:   time.Minute*3 + time.Second*59,
+		},
+		fmt.Sprintf("%s 4-7 minutes", WATCH_LATER_PLAYLIST_NAME_SHORT): &DurationPlaylist{
+			start: time.Minute * 4,
+			end:   time.Minute*7 + time.Second*59,
+		},
+		fmt.Sprintf("%s 8-10 minutes", WATCH_LATER_PLAYLIST_NAME_SHORT): &DurationPlaylist{
+			start: time.Minute * 8,
+			end:   time.Minute*10 + time.Second*59,
+		},
+		fmt.Sprintf("%s 10 minutes-12 hours", WATCH_LATER_PLAYLIST_NAME_SHORT): &DurationPlaylist{
+			start: time.Minute * 10,
+			end:   time.Hour*12 + time.Second*59,
+		},
+	}
+
+	return
+}
 
 var (
 	Config *config.Config
@@ -98,7 +161,7 @@ func getDeformJSONHeaders(headers http.Header) http.Header {
 }
 
 func getDeformSearchHeaders(headers http.Header) http.Header {
-	headers.Set("X-Action", "search")
+	headers.Set("X-Action", "Find")
 	return headers
 }
 
@@ -108,8 +171,8 @@ func processDeformResponse(response *http.Response, page_class interface{}) (res
 
 	if page_class != nil {
 		switch {
-		case helpers.IsKind(page_class, reflect.ValueOf(TokensPaginatedResponse{}).Kind()):
-			paginated_response = &TokensPaginatedResponse{}
+		case helpers.IsKind(page_class, reflect.ValueOf(PaginatedResponseResult{}).Kind()):
+			paginated_response = &PaginatedResponseResult{}
 		}
 	}
 
@@ -159,11 +222,12 @@ func processDeformResponse(response *http.Response, page_class interface{}) (res
 func SyncSchemas() {
 	// sync token collection schema
 	t := NewToken(nil, nil)
-	token_schema_sync_response, _ := helpers.Put(
+	token_schema_sync_response, err := helpers.Put(
 		t.GetCollectionURL(),
 		getDeformJSONHeaders(getDeformHeaders(make(http.Header))),
+		Config.Mode == "prod",
 		map[string]interface{}{
-			"id":     "user_tokens",
+			"_id":    "user_tokens",
 			"name":   "user tokens",
 			"schema": user_token_collection_schema,
 			"indexes": []map[string]interface{}{
@@ -183,13 +247,28 @@ func SyncSchemas() {
 		},
 	)
 
+	if err != nil {
+		panic(err)
+	}
+
 	processed_token_schema_sync_response_response, _, _ := processDeformResponse(token_schema_sync_response, nil)
 	if token_schema_sync_response.StatusCode == 200 ||
 		token_schema_sync_response.StatusCode == 201 {
 		// pass
 	} else {
-		Log.Error(processed_token_schema_sync_response_response["error"])
-		panic(processed_token_schema_sync_response_response["error"])
+		Config.RavenClient.CaptureError(
+			fmt.Errorf("%v. %v",
+				processed_token_schema_sync_response_response["message"],
+				processed_token_schema_sync_response_response["errors"],
+			),
+			map[string]string{},
+		)
+		panic(
+			fmt.Sprintf(
+				"%v",
+				processed_token_schema_sync_response_response,
+			),
+		)
 	}
 }
 
@@ -204,37 +283,38 @@ type PaginatedResponse interface {
 }
 
 // Response page from a `deform.io` will be parsed here
-type TokensPaginatedResponse struct {
+type PaginatedResponseResult struct {
 	Links   map[string]string `json:"links"`
 	Total   int64             `json:"total"`
 	Page    int64             `json:"page"`
-	Pages   int64             `json:"page"`
-	PerPage int64             `json:"page"`
-	Tokens  []*Token          `json:"result"`
-	Error   string            `json:"error"`
+	Pages   int64             `json:"pages"`
+	PerPage int64             `json:"per_page"`
+	Tokens  []*Token          `json:"items"`
+	Message string            `json:"message"`
+	Errors  []interface{}     `json:"errors"`
 }
 
-func (t *TokensPaginatedResponse) GetPage() int64 {
+func (t *PaginatedResponseResult) GetPage() int64 {
 	return t.Page
 }
 
-func (t *TokensPaginatedResponse) GetPages() int64 {
+func (t *PaginatedResponseResult) GetPages() int64 {
 	return t.Pages
 }
 
-func (t *TokensPaginatedResponse) GetPerPage() int64 {
+func (t *PaginatedResponseResult) GetPerPage() int64 {
 	return t.PerPage
 }
 
-func (t *TokensPaginatedResponse) GetTotal() int64 {
+func (t *PaginatedResponseResult) GetTotal() int64 {
 	return t.Total
 }
 
-func (t *TokensPaginatedResponse) GetLinks() map[string]string {
+func (t *PaginatedResponseResult) GetLinks() map[string]string {
 	return t.Links
 }
 
-func (t *TokensPaginatedResponse) GetResults() []interface{} {
+func (t *PaginatedResponseResult) GetResults() []interface{} {
 	var slice_to_return []interface{}
 	for _, token_ptr := range t.Tokens {
 		slice_to_return = append(slice_to_return, token_ptr)

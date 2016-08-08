@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Watch Later Service - automatically move "Watch Later" videos to another playlist.</title>
+		<meta charset="UTF-8">
+		<link rel="shortcut icon" href="/favicon.png" type="image/png">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"/>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+		<style>
+		.wl-start-btn{
+		color: #FFF;
+		font-size: 1.5em;
+		}
+		.wl-start-btn:hover{
+		color: #FFF;
+		}
+		.wl-start-btn{
+		background: rgb(51, 51, 51);
+		padding-left: 1em;
+		padding-right: 1em;
+		}
+		body {
+		font-family: AvenirNext-Regular;
+		}
+		.wl-content-item {
+		padding: 30px 15px;
+		border-top: 1px solid rgba(51, 51, 51, 0.1);
+		}
+		.wl-content-item:first-child {
+		border-top: none;
+		/*max-width: 1000px;*/
+		/*margin: 0 auto;*/
+		}
+		.wl-phone-screen {
+		border: 1px solid rgba(51, 51, 51, 0.2);
+		-webkit-box-shadow: 1px 1px 5px 1px rgba(0,0,0,0.25);
+		-moz-box-shadow: 1px 1px 5px 1px rgba(0,0,0,0.25);
+		box-shadow: 1px 1px 5px 1px rgba(0,0,0,0.25);
+		}
+		.wl-title, .wl-big-title {
+		font-size: 1.8em;
+		line-height: 1.1em
+		}
+		.wl-big-title {
+		font-size: 2em;
+		}
+		.wl-sub-title {
+		font-size: 1.2em;
+		margin-top: 10px;
+		color: rgba(51, 51, 51, 0.7);
+		}
+		.wl-list li {
+		padding-bottom: 5px;
+		text-align: left;
+		}
+		.wl-list li:last-child {
+		padding-bottom: 0;
+		}
+		.wl-text-block {
+		font-size: 20px;
+		padding: 0 30px;
+		}
+		@media (min-width: 820px) {
+		.wl-text-block-auto-resize {
+		width: 800px;
+		margin: 0 auto;
+		}
+		}
+		.wl-price {
+		color: #468847;
+		}
+		.wl-footer {
+		padding: 10px 15px;
+		border-top: 1px solid rgba(51, 51, 51, 0.1);
+		text-align: center;
+		}
+		</style>
+	</head>
+	<body class="text-center">
+		<div class="wl-content-item">
+			<div>
+				<i class="fa fa-clock-o" style="font-size: 14em;"></i>
+			</div>
+			<div class="wl-title">
+				Watch Later Service encountered an error
+			</div>
+			<div class="wl-sub-title">
+				We've got error details<p />
+			</div>			
+			<div style="margin-top: 20px">
+				<a class="btn wl-start-btn" href="/login">
+					Start again
+				</a>
+			</div>
+		</div>
+		<div class="wl-content-item">
+			<div class="wl-sub-title">
+				<ul class="list-inline" style="margin: 0">
+					<li>Built by <a href="https://docast.me">Docast</a> team. Why? Read <a href="https://blog.chib.me/whats-wrong-with-youtubes-watch-later-list/">this blog post</a>.</li>
+				</ul>
+			</div>
+		</body>
+		<!-- Yandex.Metrika counter --><script type="text/javascript"> (function (d, w, c) { (w[c] = w[c] || []).push(function() { try { w.yaCounter34170100 = new Ya.Metrika({ id:34170100, clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true }); } catch(e) { } }); var n = d.getElementsByTagName("script")[0], s = d.createElement("script"), f = function () { n.parentNode.insertBefore(s, n); }; s.type = "text/javascript"; s.async = true; s.src = "https://mc.yandex.ru/metrika/watch.js"; if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); } })(document, window, "yandex_metrika_callbacks");</script><noscript><div><img src="https://mc.yandex.ru/watch/34170100" style="position:absolute; left:-9999px;" alt="" /></div></noscript><!-- /Yandex.Metrika counter -->
+	</html>

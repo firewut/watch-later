@@ -14,17 +14,17 @@ import (
 
 // User Token class
 type Token struct {
+	Id          string        `json:"_id"`
 	IsActive    bool          `json:"is_active"`
 	OAuth2Token *oauth2.Token `json:"oauth2token"`
 	Profile     *Profile      `json:"profile"`
 
 	// id of a playlist named `watch later`
 	// in future user can rename it - we need to post videos there
-	WatchLaterPlaylistId string    `json:"watch_later_playlist_id"`
-	LatestOperation      time.Time `json:"latest_operation"`
+	LatestOperation time.Time `json:"latest_operation"`
 }
 
-// Get new token isntance
+// Get new token instance
 func NewToken(oauth2token *oauth2.Token, profile *Profile) *Token {
 	t := &Token{
 		OAuth2Token: oauth2token,
@@ -95,10 +95,11 @@ func (t *Token) FilterTokens(page int64, payload map[string]interface{}) (tokens
 				),
 			),
 		),
+		Config.Mode == "prod",
 		payload,
 	)
 
-	processed_response, paginated_tokens, _ := processDeformResponse(response, TokensPaginatedResponse{})
+	processed_response, paginated_tokens, _ := processDeformResponse(response, PaginatedResponseResult{})
 
 	if response.StatusCode == 200 {
 		// If this page contains results
@@ -115,6 +116,7 @@ func (t *Token) FilterTokens(page int64, payload map[string]interface{}) (tokens
 					slice := reflect.ValueOf(results)
 					for i := 0; i < slice.Len(); i++ {
 						token_item_interface := slice.Index(i).Interface()
+
 						if token, ok := token_item_interface.(*Token); ok {
 							tokens = append(
 								tokens,
@@ -127,7 +129,10 @@ func (t *Token) FilterTokens(page int64, payload map[string]interface{}) (tokens
 
 		}
 	} else {
-		Log.Error(processed_response["error"])
+		Config.RavenClient.CaptureError(
+			fmt.Errorf("%v %v", processed_response["errors"], processed_response["message"]),
+			map[string]string{},
+		)
 		err = messages.ErrInternalError
 	}
 
@@ -139,7 +144,7 @@ func (t *Token) GetDocumentURL() string {
 	return fmt.Sprintf(
 		"%s/collections/user_tokens/documents/%s/",
 		Config.DeformIOProject,
-		t.Profile.Id,
+		t.Id,
 	)
 }
 
@@ -171,15 +176,25 @@ func (t *Token) Save() (err error) {
 				make(http.Header),
 			),
 		),
+		Config.Mode == "prod",
 		t,
 	)
 
 	processed_response, _, _ := processDeformResponse(response, nil)
-	if response.StatusCode == 200 || response.StatusCode == 201 {
-		// Log.Success(processed_response)
-	} else {
-		Log.Error(processed_response["error"])
-		return messages.NewError(messages.ERROR_UNPROCESSABLE_ENTITY, processed_response["error"])
+	switch response.StatusCode {
+	case 200, 201:
+	default:
+		Config.RavenClient.CaptureError(
+			fmt.Errorf("%v %v", processed_response["errors"], processed_response["message"]),
+			map[string]string{
+				"Token": t.Id,
+				"Email": t.Profile.Email,
+			},
+		)
+		return messages.NewError(
+			messages.ERROR_UNPROCESSABLE_ENTITY,
+			"An error occurred",
+		)
 	}
 
 	return nil
@@ -194,15 +209,25 @@ func (t *Token) Patch(payload map[string]interface{}) (err error) {
 				make(http.Header),
 			),
 		),
+		Config.Mode == "prod",
 		payload,
 	)
 
 	processed_response, _, _ := processDeformResponse(response, nil)
-	if response.StatusCode == 200 {
-		// Log.Success(processed_response)
-	} else {
-		Log.Error(processed_response["error"])
-		return messages.NewError(messages.ERROR_UNPROCESSABLE_ENTITY, processed_response["error"])
+	switch response.StatusCode {
+	case 200:
+	default:
+		Config.RavenClient.CaptureError(
+			fmt.Errorf("%v %v", processed_response["errors"], processed_response["message"]),
+			map[string]string{
+				"Token": t.Id,
+				"Email": t.Profile.Email,
+			},
+		)
+		return messages.NewError(
+			messages.ERROR_UNPROCESSABLE_ENTITY,
+			"An error occurred",
+		)
 	}
 
 	return nil
@@ -217,14 +242,25 @@ func (t *Token) Delete() (err error) {
 				make(http.Header),
 			),
 		),
+		Config.Mode == "prod",
 	)
 
 	processed_response, _, _ := processDeformResponse(response, nil)
-	if response.StatusCode == 204 {
-		Log.Success(processed_response)
-	} else {
-		Log.Error(processed_response["error"])
-		return messages.NewError(messages.ERROR_UNPROCESSABLE_ENTITY, processed_response["error"])
+
+	switch response.StatusCode {
+	case 204:
+	default:
+		Config.RavenClient.CaptureError(
+			fmt.Errorf("%v %v", processed_response["errors"], processed_response["message"]),
+			map[string]string{
+				"Token": t.Id,
+				"Email": t.Profile.Email,
+			},
+		)
+		return messages.NewError(
+			messages.ERROR_UNPROCESSABLE_ENTITY,
+			"An error occurred",
+		)
 	}
 
 	return nil
@@ -238,7 +274,13 @@ func (t *Token) Revoke() (err error) {
 	if response.StatusCode == 200 {
 		go t.Delete()
 	} else {
-		Log.Error(fmt.Sprintf("Revoking token %v", err))
+		Config.RavenClient.CaptureError(
+			err,
+			map[string]string{
+				"Token": t.Id,
+				"Email": t.Profile.Email,
+			},
+		)
 		return err
 	}
 
@@ -255,17 +297,27 @@ func (t *Token) Disable() (err error) {
 				make(http.Header),
 			),
 		),
+		Config.Mode == "prod",
 		map[string]interface{}{
 			"is_active": false,
 		},
 	)
 
 	processed_response, _, _ := processDeformResponse(response, nil)
-	if response.StatusCode == 200 {
-		Log.Success(processed_response)
-	} else {
-		Log.Error(processed_response["error"])
-		return messages.NewError(messages.ERROR_UNPROCESSABLE_ENTITY, processed_response["error"])
+	switch response.StatusCode {
+	case 200:
+	default:
+		Config.RavenClient.CaptureError(
+			fmt.Errorf("%v %v", processed_response["errors"], processed_response["message"]),
+			map[string]string{
+				"Token": t.Id,
+				"Email": t.Profile.Email,
+			},
+		)
+		return messages.NewError(
+			messages.ERROR_UNPROCESSABLE_ENTITY,
+			"An error occurred",
+		)
 	}
 
 	return nil
@@ -281,17 +333,27 @@ func (t *Token) Enable() (err error) {
 				make(http.Header),
 			),
 		),
+		Config.Mode == "prod",
 		map[string]interface{}{
 			"is_active": true,
 		},
 	)
 
 	processed_response, _, _ := processDeformResponse(response, nil)
-	if response.StatusCode == 200 {
-		Log.Success(processed_response)
-	} else {
-		Log.Error(processed_response["error"])
-		return messages.NewError(messages.ERROR_UNPROCESSABLE_ENTITY, processed_response["error"])
+	switch response.StatusCode {
+	case 200:
+	default:
+		Config.RavenClient.CaptureError(
+			fmt.Errorf("%v %v", processed_response["errors"], processed_response["message"]),
+			map[string]string{
+				"Token": t.Id,
+				"Email": t.Profile.Email,
+			},
+		)
+		return messages.NewError(
+			messages.ERROR_UNPROCESSABLE_ENTITY,
+			"An error occurred",
+		)
 	}
 
 	return nil
